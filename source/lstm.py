@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 import numpy as np
 import matplotlib.dates as mdates
 from sklearn.model_selection import train_test_split
@@ -99,8 +100,15 @@ plt.ylabel("Cases") # label y-axis
 plt.legend()
 plt.show()
 
+
+models_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../models')
+os.makedirs(models_dir, exist_ok=True)
+
 # save model
-model.save('lstm.h5')
+model_path = os.path.join(models_dir, "lstm.h5")
+
+# save model
+model.save(model_path)
 
 # def predict(num_prediction, model):
 #     prediction_list = data_scaled[-num_prediction-1:, :].copy()
