@@ -36,14 +36,6 @@ data.fillna(value = 0, inplace = True) # fill all NaN with 0
 # chi sqaure test
 # Heap Map
 
-'''
-def checkOutlier():
-
-# check if any negative values in the data
-if (data.iloc[: ,1:].values < 0).any():
-    checkOutlier()
-'''
-
 def showTrends(title, x_variable, y_variable):
     plt.title(title)
     plt.plot(x_variable, y_variable)
@@ -111,11 +103,6 @@ plt.ylabel("Cases") # label y-axis
 plt.show()
 '''
 
-# calculate new cases rate
-
-
-
-
 # calculate culmulative deaths amount
 cumul_deaths = 0
 for i in range(len(data)):
@@ -129,7 +116,6 @@ p, s, az, c = calculateVaccineTypeForDeath()
 
 total_vaccinated_deaths = p + s + az + c
 print(f'Total Vaccinated Deaths: {total_vaccinated_deaths}')
-
 
 # calculate total number vaccinated of each vaccine type
 total_p = calculateVaccineType(data['pfizer1'])
@@ -184,14 +170,9 @@ def predict(p, s, az):
     plt.legend()
     plt.show()
 
-
-
-
 # create new dataframe only store for the selected columns
 #ds = smooth_data[['cases_new', 'cases_recovered', 'cases_pvax', 'cases_fvax', 'pcr', 'daily', 'deaths_new']].copy()
 ds = smooth_data[['cases_new', 'cases_recovered', 'cases_pvax', 'cases_fvax', 'daily', 'deaths_new']].copy()
 ds.fillna(value = 0, inplace = True)
 
 predict(p_death_rate, s_death_rate, az_death_rate)
-
-
