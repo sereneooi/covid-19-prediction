@@ -13,4 +13,4 @@ The goal of this project is to develop predictive models that can forecast the p
 
 ## Dataset
 
-The dataset used in this project comprises anonymized patient records, including demographic information, clinical features, and COVID-19 outcomes. Due to privacy concerns, the dataset is not included in this repository. Researchers interested in accessing the data should contact the relevant data providers or use publicly available datasets that comply with ethical guidelines.
+The dataset used in this project comprises anonymized patient records, including demographic information, clinical features, and COVID-19 outcomes. 
