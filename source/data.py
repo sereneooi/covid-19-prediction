@@ -58,7 +58,6 @@ cases_data.to_csv("Cases.csv", index = False)
 #tests_data.to_csv("Tests.csv", index = False)
 linelist_deaths.to_csv("linelist_deaths.csv", index = False)
 
-
 '''
 # prediction for future days
 def predict(num_prediction, model):

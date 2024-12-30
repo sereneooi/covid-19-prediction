@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import math
+import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
@@ -36,8 +37,12 @@ def GRU_model(X_Train, y_Train, X_Test):
     model.fit(X_Train, y_Train, epochs = 100, batch_size = 200, callbacks = [early_stopping])
     pred_GRU = model.predict(X_Test)
 
+    models_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../models')
+    os.makedirs(models_dir, exist_ok=True)
+
     # save model
-    model.save('gru.h5')
+    model_path = os.path.join(models_dir, "gru.h5")
+    model.save(model_path)
 
     return pred_GRU
 
