@@ -1,178 +1,137 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-import scipy
-from scipy.interpolate import make_interp_spline, BSpline
 import matplotlib.dates as mdates
-import math
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import LSTM
-from sklearn.metrics import mean_squared_error
-from keras.callbacks import ReduceLROnPlateau
-from sklearn.preprocessing import MinMaxScaler
 
-
-'''
-# get the population of Penang
-population = pd.read_csv("https://raw.githubusercontent.com/CITF-Malaysia/citf-public/main/static/population.csv", usecols = ['state', 'pop'])
-population = int(population[population['state'] == "Pulau Pinang"]['pop'])
-'''
-# read data from csv files
-data = pd.read_csv("Cases.csv").iloc[41:, :] # get the data after 2020-03-06
-
-# convert all columns to float64 except for date column
-cols = data.columns.drop('date')
-data[cols] = data[cols].apply(np.float64)
-data.index = pd.to_datetime(data['date']) # set date column to index
-del data["date"] # delete the column 'date' since the date is set to index
-
-# data cleansing
-# all value cannot be negative
-data.fillna(value = 0, inplace = True) # fill all NaN with 0
-
-# 1. features selection
-# chi sqaure test
-# Heap Map
-
-def showTrends(title, x_variable, y_variable):
+def show_trends(title, x_variable, y_variable):
+    """Display trends using a line graph."""
     plt.title(title)
     plt.plot(x_variable, y_variable)
-    X = plt.gca().xaxis # decalared X variable to x-axis
-    X.set_major_locator(mdates.MonthLocator()) # set every month
-    X.set_major_formatter(mdates.DateFormatter('%b %Y')) # Specify the format of date to be displayed
-    plt.xticks(rotation = 45) # rotate the x-axis label so that can be seen clearly
-    plt.ylabel("Cases") # label y-axis
+    x_axis = plt.gca().xaxis
+    x_axis.set_major_locator(mdates.MonthLocator())
+    x_axis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    plt.xticks(rotation=45)
+    plt.ylabel("Cases")
     plt.show()
 
-def calculateVaccineTypeForDeath():
+def calculate_vaccine_type_for_death():
+    """Calculate the number of deaths for each vaccine type."""
     deaths = pd.read_csv("linelist_deaths.csv")
-    deaths.fillna(value = 'NaN', inplace = True)
-    p = 0
-    s = 0
-    az = 0
-    c = 0
+    deaths.fillna(value='NaN', inplace=True)
+
+    vaccine_counts = {
+        'pfizer': 0,
+        'sinovac': 0,
+        'astrazeneca': 0,
+        'cansino': 0
+    }
+
     for i in range(len(deaths)):
-        if deaths['brand1'].iloc[i].lower() == 'sinovac':
-            s += 1
-        elif deaths['brand1'].iloc[i].lower() == 'pfizer':
-            p += 1
-        elif deaths['brand1'].iloc[i].lower() == 'astrazeneca':
-            az += 1
-        elif deaths['brand1'].iloc[i].lower() == 'cansino':
-            c += 1
+        brand = deaths['brand1'].iloc[i].lower()
+        if brand in vaccine_counts:
+            vaccine_counts[brand] += 1
 
-    return p, s, az, c
+    return vaccine_counts['pfizer'], vaccine_counts['sinovac'], vaccine_counts['astrazeneca'], vaccine_counts['cansino']
 
-def calculateVaxDeathRate(vaxType, total_vaccinated): # calculate the number of deaths rate (deaths number) for each type of vaccine
-    return vaxType / total_vaccinated * 100
+def calculate_vax_death_rate(vax_type_count, total_vaccinated):
+    """Calculate the death rate for a specific vaccine type."""
+    return (vax_type_count / total_vaccinated) * 100
 
-def calculateVaccineType(vaxType): 
-    vaxType.fillna(value = 0, inplace = True)
-    total = 0
-    
-    for i in range(len(vaxType)):
-        total += vaxType.iloc[i]
+def calculate_vaccine_type(vax_type):
+    """Calculate the total number vaccinated for a specific vaccine type."""
+    vax_type.fillna(value=0, inplace=True)
+    return vax_type.sum()
 
-    return total
-
-# used to display in the line graph
-smooth_data = data.rolling(7).mean().round(5)
-
-'''
-# show all the trends
-# 2021-02-24 is the date of first day of vaccination
-showTrends("Daily Vaccination Trend in Penang", smooth_data.index[(data.index >= '2021-02-24')], smooth_data['daily'].loc[(data.index >= '2021-02-24')])
-showTrends("Daily New Cases in Penang", smooth_data.index, smooth_data['cases_new'])
-showTrends("Daily Active Cases in Penang", smooth_data.index, smooth_data['cases_active'])
-# first death case happened on 2020-03-22
-showTrends("Daily New Deaths in Penang", smooth_data.index[(data.index >= '2020-03-22')], smooth_data['deaths_new'].loc[(data.index >= '2020-03-22')])
-
-# plot bars in stack manner
-plt.title("Daily Test Cases in Penang")
-plt.bar(smooth_data.index[(data['rtk-ag'] > 0)], smooth_data['rtk-ag'].loc[(data['rtk-ag'] > 0)], label = 'RTK-AG', color = (0.2, 0.4, 0.65, 0.8))
-plt.bar(smooth_data.index[(data['pcr'] > 0)], smooth_data['pcr'].loc[(data['pcr'] > 0)], bottom = smooth_data['rtk-ag'].loc[(data['rtk-ag'] > 0)], label = 'PCR', 
-color = (0.2, 0.4, 0.6, 0.6))
-plt.legend()
-X = plt.gca().xaxis # decalared X variable to x-axis
-X.set_major_locator(mdates.MonthLocator()) # set every month
-X.set_major_formatter(mdates.DateFormatter('%b %Y')) # Specify the format of date to be displayed
-plt.xticks(rotation = 45) # rotate the x-axis label so that can be seen clearly
-plt.ylabel("Cases") # label y-axis
-plt.show()
-'''
-
-# calculate culmulative deaths amount
-cumul_deaths = 0
-for i in range(len(data)):
-    cumul_deaths += data['deaths_new'].iloc[i]
-print(f'Cumulative Deaths: {cumul_deaths}')
-
-#print('Deaths Rate: {:.2f}'.format(data['deaths_rate']))
-
-## calculate effectiveness of each vaccine
-p, s, az, c = calculateVaccineTypeForDeath()
-
-total_vaccinated_deaths = p + s + az + c
-print(f'Total Vaccinated Deaths: {total_vaccinated_deaths}')
-
-# calculate total number vaccinated of each vaccine type
-total_p = calculateVaccineType(data['pfizer1'])
-total_s = calculateVaccineType(data['sinovac1'])
-total_az = calculateVaccineType(data['astra1'])
-total_si = calculateVaccineType(data['sinopharm1'])
-total_c = calculateVaccineType(data['cansino'])
-
-print(total_p)
-print(total_s)
-print(total_az)
-print(total_c)
-print(total_si)
-
-# calculate the deaths rate (possibility of death) of each vaccine type
-p_death_rate = calculateVaxDeathRate(p, total_p)
-s_death_rate = calculateVaxDeathRate(s, total_s)
-az_death_rate = calculateVaxDeathRate(az, total_az)
-c_death_rate = calculateVaxDeathRate(c, total_c)
-
-print("Pfizer       : {:.3f} %".format(p_death_rate))
-print("Sinovax      : {:.3f} %".format(s_death_rate))
-print("Astra Zeneca : {:.3f} %".format(az_death_rate))
-print("Casino       : {:.3f} %".format(c_death_rate))
-
-# Test prediction result by using confusion matrix
-
-def predict(p, s, az):
+def predict_deaths(data, p_death_rate, s_death_rate, az_death_rate):
+    """Predict deaths based on vaccine types and death rates."""
     new_data = data[['cases_new', 'deaths_new', 'pfizer1', 'sinovac1', 'astra1']].copy()
-    predicted_pfizer = []
-    predicted_sinovax = []
-    predicted_az = []
-    total_predicted = []
-    for i in range(len(new_data)):
-        predicted_pfizer.append(float(new_data['pfizer1'].iloc[i] * p))
-        predicted_sinovax.append(float(new_data['sinovac1'].iloc[i] * s))
-        predicted_az.append(float(new_data['astra1'].iloc[i] * az))
-        total_predicted.append(predicted_pfizer[i]+predicted_sinovax[i]+predicted_az[i])
-    
-    new_data['total_predicted'] = total_predicted
 
-    print(new_data['total_predicted'])
+    new_data['predicted_pfizer'] = new_data['pfizer1'] * p_death_rate
+    new_data['predicted_sinovac'] = new_data['sinovac1'] * s_death_rate
+    new_data['predicted_astrazeneca'] = new_data['astra1'] * az_death_rate
+    new_data['total_predicted'] = (
+        new_data['predicted_pfizer'] + new_data['predicted_sinovac'] + new_data['predicted_astrazeneca']
+    )
 
-    plt.title("Predicted")
-    new_data['total_predicted'].plot(label = 'Predicted')
-    new_data['cases_new'].plot(label = 'Actual Cases')
-    X = plt.gca().xaxis # decalared X variable to x-axis
-    X.set_major_locator(mdates.MonthLocator()) # set every month
-    X.set_major_formatter(mdates.DateFormatter('%b %Y')) # Specify the format of date to be displayed
-    plt.xticks(rotation = 45) # rotate the x-axis label so that can be seen clearly
-    plt.ylabel("Cases") # label y-axis
+    plt.title("Predicted vs Actual Cases")
+    new_data['total_predicted'].plot(label='Predicted', color='red')
+    new_data['cases_new'].plot(label='Actual Cases', color='blue')
+
+    x_axis = plt.gca().xaxis
+    x_axis.set_major_locator(mdates.MonthLocator())
+    x_axis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    plt.xticks(rotation=45)
+    plt.ylabel("Cases")
     plt.legend()
     plt.show()
 
-# create new dataframe only store for the selected columns
-#ds = smooth_data[['cases_new', 'cases_recovered', 'cases_pvax', 'cases_fvax', 'pcr', 'daily', 'deaths_new']].copy()
-ds = smooth_data[['cases_new', 'cases_recovered', 'cases_pvax', 'cases_fvax', 'daily', 'deaths_new']].copy()
-ds.fillna(value = 0, inplace = True)
+def main():
+    # Load and preprocess data
+    data = pd.read_csv("data/Cases.csv").iloc[41:, :]
+    data.columns = data.columns.str.strip()
+    data[cols := data.columns.drop('date')] = data[cols].apply(pd.to_numeric, errors='coerce')
+    data.index = pd.to_datetime(data['date'])
+    data.drop(columns=['date'], inplace=True)
+    data.fillna(value=0, inplace=True)
 
-predict(p_death_rate, s_death_rate, az_death_rate)
+    # Smooth data for trend visualization
+    smooth_data = data.rolling(7).mean().round(5)
+
+    # Display trends
+    show_trends("Daily Vaccination Trend in Penang", 
+                smooth_data.index[data.index >= '2021-02-24'], 
+                smooth_data['daily'][data.index >= '2021-02-24'])
+
+    show_trends("Daily New Cases in Penang", smooth_data.index, smooth_data['cases_new'])
+    show_trends("Daily Active Cases in Penang", smooth_data.index, smooth_data['cases_active'])
+    show_trends("Daily New Deaths in Penang", 
+                smooth_data.index[data.index >= '2020-03-22'], 
+                smooth_data['deaths_new'][data.index >= '2020-03-22'])
+
+    # Plot daily test cases
+    plt.title("Daily Test Cases in Penang")
+    plt.bar(smooth_data.index[smooth_data['rtk-ag'] > 0], 
+            smooth_data['rtk-ag'][smooth_data['rtk-ag'] > 0], 
+            label='RTK-AG', color=(0.2, 0.4, 0.65, 0.8))
+
+    plt.bar(smooth_data.index[smooth_data['pcr'] > 0], 
+            smooth_data['pcr'][smooth_data['pcr'] > 0], 
+            bottom=smooth_data['rtk-ag'][smooth_data['rtk-ag'] > 0], 
+            label='PCR', color=(0.2, 0.4, 0.6, 0.6))
+
+    plt.legend()
+    x_axis = plt.gca().xaxis
+    x_axis.set_major_locator(mdates.MonthLocator())
+    x_axis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    plt.xticks(rotation=45)
+    plt.ylabel("Cases")
+    plt.show()
+
+    # Calculate cumulative deaths
+    cumulative_deaths = data['deaths_new'].sum()
+    print(f'Cumulative Deaths: {cumulative_deaths}')
+
+    # Calculate vaccine effectiveness
+    p, s, az, c = calculate_vaccine_type_for_death()
+    total_vaccinated_deaths = p + s + az + c
+    print(f'Total Vaccinated Deaths: {total_vaccinated_deaths}')
+
+    total_p = calculate_vaccine_type(data['pfizer1'])
+    total_s = calculate_vaccine_type(data['sinovac1'])
+    total_az = calculate_vaccine_type(data['astra1'])
+    total_c = calculate_vaccine_type(data['cansino'])
+
+    print(total_p, total_s, total_az, total_c)
+
+    p_death_rate = calculate_vax_death_rate(p, total_p)
+    s_death_rate = calculate_vax_death_rate(s, total_s)
+    az_death_rate = calculate_vax_death_rate(az, total_az)
+
+    print(f"Pfizer Death Rate: {p_death_rate:.3f}%")
+    print(f"Sinovac Death Rate: {s_death_rate:.3f}%")
+    print(f"AstraZeneca Death Rate: {az_death_rate:.3f}%")
+
+    # Predict deaths and display results
+    predict_deaths(data, p_death_rate, s_death_rate, az_death_rate)
+
+if __name__ == "__main__":
+    main()
