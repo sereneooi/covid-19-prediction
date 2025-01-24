@@ -14,3 +14,14 @@ The goal of this project is to develop predictive models that can forecast the p
 ## Dataset
 
 The dataset used in this project comprises anonymized patient records, including demographic information, clinical features, and COVID-19 outcomes. 
+
+## Example Usage
+Linux: 
+```
+python3 source/data.py
+```
+
+Windows: 
+```
+python source/data.py
+```
