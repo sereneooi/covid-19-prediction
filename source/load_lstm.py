@@ -26,49 +26,53 @@ def predict(num_prediction, model):
     
     return prediction_list
     
-def predict_dates(num_prediction):
+def predict_dates(df, num_prediction):
     last_date = df.index.values[-1]
     prediction_dates = pd.date_range(last_date, periods = num_prediction + 1).tolist()
 
     return prediction_dates
 
-# laod the saved model
-model = load_model('lstm.h5')
+def main():
+    # laod the saved model
+    model = load_model('models/lstm.h5')
 
-# read data from csv files
-data = pd.read_csv("Cases.csv").iloc[41:, :] # get the data after 2020-03-06
+    # read data from csv files
+    data = pd.read_csv("data/Cases.csv").iloc[41:, :] # get the data after 2020-03-06
 
-# convert all columns to float64 except for date column
-cols = data.columns.drop('date')
-data[cols] = data[cols].apply(np.float64)
-data.index = pd.to_datetime(data['date']) # set date column to index
-del data["date"] # delete the column 'date' since the date is set to index
+    # convert all columns to float64 except for date column
+    cols = data.columns.drop('date')
+    data[cols] = data[cols].apply(np.float64)
+    data.index = pd.to_datetime(data['date']) # set date column to index
+    del data["date"] # delete the column 'date' since the date is set to index
 
-# data cleansing
-data.fillna(value = 0, inplace = True) # fill all NaN with 0
+    # data cleansing
+    data.fillna(value = 0, inplace = True) # fill all NaN with 0
 
-# create new dataframe only store for the selected columns
-df = data[['cases_new', 'cases_fvax', 'daily']].copy()
-df.fillna(value = 0, inplace = True)
+    # create new dataframe only store for the selected columns
+    df = data[['cases_new', 'cases_fvax', 'daily']].copy()
+    df.fillna(value = 0, inplace = True)
 
-# normalized the data 
-scaler = MinMaxScaler()
-data_scaled = scaler.fit_transform(df)
+    # normalized the data 
+    scaler = MinMaxScaler()
+    data_scaled = scaler.fit_transform(df)
 
-# assign value
-num_prediction = 14
-forecast = predict(num_prediction, model)
-forecast_dates = predict_dates(num_prediction)
+    # assign value
+    num_prediction = 14
+    forecast = predict(num_prediction, model)
+    forecast_dates = predict_dates(df, num_prediction)
 
-fct = pd.DataFrame(forecast_dates, columns = ['dates'])
-fct['pred'] = forecast.tolist()
-fct.index = pd.to_datetime(fct['dates'])
-del fct["dates"] 
+    fct = pd.DataFrame(forecast_dates, columns = ['dates'])
+    fct['pred'] = forecast.tolist()
+    fct.index = pd.to_datetime(fct['dates'])
+    del fct["dates"] 
 
-# plot predicted cases for future days
-plt.title("Predicted New Daily Cases")
-df['cases_new'].plot(label = 'Actual New Daily Cases') 
-fct['pred'].plot(label = 'Predicted New Daily Cases') 
-plt.ylabel("Cases") # label y-axis
-plt.legend()
-plt.show()
+    # plot predicted cases for future days
+    plt.title("Predicted New Daily Cases")
+    df['cases_new'].plot(label = 'Actual New Daily Cases') 
+    fct['pred'].plot(label = 'Predicted New Daily Cases') 
+    plt.ylabel("Cases") # label y-axis
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    main()
